@@ -60,18 +60,20 @@ module.exports = function (RED) {
           if (err) {
             node.error(err, msg);
             node.status({ fill: 'red', shape: 'ring', text: 'failed' });
+            node.send(err);
             return;
           }
           node.status({});
-          if (node.operation == 'get') {
+          if (node.operation === 'get') {
             result.once('close', function() { conn.end(); });
             result.pipe(fs.createWriteStream(localFilename));
             msg.payload = 'Get operation successful. ' + localFilename;
-          } else if (node.operation == 'put') {
+          } else if (node.operation === 'put') {
             conn.end();
             msg.payload = 'Put operation successful.';
           } else {
             conn.end();
+            msg.message = 'Operation successful.';
             msg.payload = result;
           }
           msg.filename = filename;
@@ -81,7 +83,7 @@ module.exports = function (RED) {
         conn.on('ready', function () {
           switch (node.operation) {
             case 'list':
-              conn.list(node.sendMsg);
+              conn.list(filename, node.sendMsg);
               break;
             case 'get':
               conn.get(filename, node.sendMsg);
@@ -94,10 +96,10 @@ module.exports = function (RED) {
               break;
           }
         });
-        conn.on('error', function(err) { 
+        conn.on('error', function(err) {
           node.error(err, msg);
           node.status({ fill: 'red', shape: 'ring', text: err.message });
-          return;
+          node.send(err);
         });
         conn.connect(node.ftpConfig.options);
       });
